@@ -14,7 +14,7 @@ export function App(): React.JSX.Element {
   return (
     <main>
       <h1>File Transfer</h1>
-      <DeviceStatusView status={status} />
+      <DeviceStatusView status={status} onDiscardInterruptedTask={() => window.api.discardInterruptedTask()} />
       {status.kind === 'connected' && <DeviceBrowser />}
     </main>
   )

@@ -56,4 +56,15 @@ describe('DeviceMonitor', () => {
 
     expect(seen).toEqual(['connected'])
   })
+
+  it('currentStatus() 返回最近一次 refresh() 得到的状态，而不需要再次查询设备', async () => {
+    const client = new FakeDeviceClient()
+    const monitor = new DeviceMonitor(client)
+    expect(monitor.currentStatus()).toEqual({ kind: 'disconnected' })
+
+    client.setDevices([{ serial: 'ABC123', authorized: true }])
+    await monitor.refresh()
+
+    expect(monitor.currentStatus()).toEqual({ kind: 'connected', serial: 'ABC123' })
+  })
 })

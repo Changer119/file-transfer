@@ -11,6 +11,7 @@ const api = {
     ipcRenderer.on(IPC_CHANNELS.deviceStatusChanged, listener)
     return () => ipcRenderer.removeListener(IPC_CHANNELS.deviceStatusChanged, listener)
   },
+  discardInterruptedTask: (): Promise<void> => ipcRenderer.invoke(IPC_CHANNELS.discardInterruptedTask),
   listDirectory: (path: string): Promise<FileEntry[]> => ipcRenderer.invoke(IPC_CHANNELS.listDirectory, path),
   toggleSelection: (path: string): Promise<string[]> => ipcRenderer.invoke(IPC_CHANNELS.toggleSelection, path),
   selectAllInFolder: (folderPaths: string[]): Promise<string[]> =>

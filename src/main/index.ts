@@ -47,7 +47,7 @@ app.whenReady().then(() => {
   const getCurrentWindow = (): BrowserWindow => currentWindow
 
   // ipcMain.handle 只在这里注册一次；重复注册同一个 channel 会直接抛错。
-  registerDeviceIpc(getCurrentWindow, monitor)
+  registerDeviceIpc(getCurrentWindow, monitor, engine)
   registerDirectoryIpc(client)
   registerSelectionIpc(selection)
   registerTransferIpc(getCurrentWindow, engine, selection)

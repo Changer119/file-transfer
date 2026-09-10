@@ -13,6 +13,10 @@ export class DeviceMonitor {
     this.listeners.push(listener)
   }
 
+  currentStatus(): ConnectionStatus {
+    return this.lastStatus
+  }
+
   async refresh(): Promise<ConnectionStatus> {
     const status = await this.deriveStatus()
     if (!statusEquals(status, this.lastStatus)) {

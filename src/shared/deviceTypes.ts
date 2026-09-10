@@ -8,3 +8,4 @@ export type ConnectionStatus =
   | { kind: 'unauthorized' }
   | { kind: 'connected'; serial: string }
   | { kind: 'adb-not-found' }
+  | { kind: 'foreign-device-pending'; serial: string }

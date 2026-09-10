@@ -144,4 +144,51 @@ describe('TransferEngine 断线自动续传', () => {
     expect(engine.snapshot().status).toBe('interrupted')
     expect(client.pushCallLog()).toHaveLength(1)
   })
+
+  it('interruptedOwnerSerial() 只在任务处于 interrupted 状态时才报告归属设备序列号', async () => {
+    const client = new FakeDeviceClient()
+    client.setDevices([{ serial: 'SER1', authorized: true }])
+    client.holdPush('/sdcard/DCIM/a.jpg')
+    const engine = new TransferEngine(client)
+    expect(engine.interruptedOwnerSerial()).toBeUndefined()
+
+    const run = engine.run(['/sdcard/DCIM/a.jpg'], '/Users/test/Desktop')
+    await vi.waitFor(() => expect(client.pushCallLog()).toHaveLength(1))
+    expect(engine.interruptedOwnerSerial()).toBeUndefined() // running，还没中断
+
+    client.simulateDisconnect('SER1')
+    await run
+    expect(engine.interruptedOwnerSerial()).toBe('SER1')
+  })
+
+  it('discardInterruptedTask() 放弃等待续传的旧任务后，归属序列号解绑，可以立即为新设备发起新任务', async () => {
+    const client = new FakeDeviceClient()
+    client.setDevices([{ serial: 'SER1', authorized: true }])
+    client.holdPush('/sdcard/DCIM/a.jpg')
+    const engine = new TransferEngine(client)
+
+    const run = engine.run(['/sdcard/DCIM/a.jpg', '/sdcard/DCIM/b.jpg'], '/Users/test/Desktop')
+    await vi.waitFor(() => expect(client.pushCallLog()).toHaveLength(1))
+    client.simulateDisconnect('SER1')
+    await run
+    expect(engine.snapshot().status).toBe('interrupted')
+
+    engine.discardInterruptedTask()
+
+    expect(engine.snapshot()).toMatchObject({ status: 'completed', totalFiles: 0, completedFiles: 0 })
+    expect(engine.interruptedOwnerSerial()).toBeUndefined()
+
+    // 新设备接入后可以正常发起全新的传输任务
+    client.setDevices([{ serial: 'OTHER', authorized: true }])
+    await engine.run(['/sdcard/DCIM/c.jpg'], '/Users/test/Desktop')
+    expect(engine.snapshot()).toMatchObject({ status: 'completed', totalFiles: 1, completedFiles: 1 })
+  })
+
+  it('discardInterruptedTask() 在没有 interrupted 任务时是安全的空操作', () => {
+    const client = new FakeDeviceClient()
+    const engine = new TransferEngine(client)
+
+    expect(() => engine.discardInterruptedTask()).not.toThrow()
+    expect(engine.snapshot()).toMatchObject({ status: 'completed', totalFiles: 0 })
+  })
 })

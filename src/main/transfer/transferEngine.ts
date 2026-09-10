@@ -150,6 +150,33 @@ export class TransferEngine {
     this.notify()
   }
 
+  /**
+   * 续传等待期间插入不同设备的处理（issue #8）：只在任务处于 interrupted
+   * 状态时报告归属设备序列号，供上层（IPC 层）判断新接入的设备是否与它冲突。
+   */
+  interruptedOwnerSerial(): string | undefined {
+    return this.status === 'interrupted' ? this.ownerSerial : undefined
+  }
+
+  /**
+   * 用户在"检测到属于另一台设备的未完成任务"弹窗中确认放弃后调用：清空当前
+   * 等待续传的任务并解绑归属序列号，新设备可以立即开始浏览/选择/传输。
+   * 没有 interrupted 任务时是安全的空操作。
+   *
+   * 故意不调用 notify()：这里把 status 重置为 completed 只是"没有活跃任务"
+   * 这个内部状态的复用，不代表一次真实的传输完成，不应该被当作
+   * transferSnapshotChanged 事件广播出去——否则渲染进程可能把它误显示成
+   * "传输完成"。放弃后的界面应该保持"尚未开始任何传输"的样子，等用户为
+   * 新设备发起一次真正的 run() 时再自然产生第一次通知。
+   */
+  discardInterruptedTask(): void {
+    if (this.status !== 'interrupted') return
+    this.status = 'completed'
+    this.files = []
+    this.currentIndex = -1
+    this.ownerSerial = undefined
+  }
+
   private async isOwnerDisconnected(): Promise<boolean> {
     if (this.ownerSerial === undefined) return false
     return !(await this.client.isConnected(this.ownerSerial))
