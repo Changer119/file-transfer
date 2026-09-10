@@ -71,7 +71,16 @@ export class TransferEngine {
 
     // 任务归属于创建它时连接的 Device（CONTEXT.md「传输任务」词条）：记录下
     // serial，后续断线/续传判定都靠它，而不是靠猜测当前还连着哪台设备。
-    this.ownerSerial = await this.client.getSerialNumber()
+    try {
+      this.ownerSerial = await this.client.getSerialNumber()
+    } catch (error) {
+      // 拿 serial 失败（比如 adb 掉了）不能让引擎卡死在 running：否则
+      // "一键传输"按钮会永久禁用，且再也无法发起新的传输。
+      this.status = 'completed'
+      this.notify()
+      throw error
+    }
+
     await this.processQueue()
   }
 
@@ -85,10 +94,15 @@ export class TransferEngine {
     if (this.status !== 'interrupted' || this.ownerSerial !== serial) return
     this.status = 'running'
     this.notify()
-    // 这里是事件回调触发的 fire-and-forget 续传，没有调用方在 await 它；
-    // 必须兜底 catch，否则 isConnected() 万一异常会变成未处理的 rejection。
+    // 这里是事件回调触发的 fire-and-forget 续传，没有调用方在 await 它。
+    // processQueue() 内部已经把 pushFile 失败和 isConnected() 查询失败都
+    // 兜底成"回到 interrupted"，理论上不会再抛到这里；这层 catch 只是最后
+    // 一道防线——万一真的抛出意外异常，也要把 status 拉回 interrupted，
+    // 而不是让它永远卡在 running（导致再也无法重新发起或续传）。
     this.processQueue().catch((error: unknown) => {
       logger.warn({ error }, 'resuming an interrupted transfer task failed unexpectedly')
+      this.status = 'interrupted'
+      this.notify()
     })
   }
 
@@ -112,7 +126,10 @@ export class TransferEngine {
         })
         file.status = 'done'
       } catch (error) {
-        if (await this.isOwnerDisconnected()) {
+        // isOwnerDisconnected() 本身查询 isConnected() 也可能意外抛错（比如
+        // adb 进程正在重启）；这种不确定情况按"断线"处理更安全——顶多多等一次
+        // 重连，不会把还没传完的文件误判为永久失败、丢掉重传机会。
+        if (await this.isOwnerDisconnected().catch(() => true)) {
           // ADR 0002：续传不做字节级续传，被打断的文件回到 pending，
           // 下次会整个从头重新调用 pushFile。
           file.status = 'pending'

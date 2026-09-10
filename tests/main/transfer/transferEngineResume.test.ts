@@ -110,4 +110,38 @@ describe('TransferEngine 断线自动续传', () => {
     expect(newEngine.snapshot()).toMatchObject({ status: 'completed', totalFiles: 0, completedFiles: 0 })
     expect(client.pushCallLog().map((call) => call.sourcePath)).toEqual(['/sdcard/DCIM/a.jpg'])
   })
+
+  it('run() 因为拿不到设备序列号而失败时，不会把 status 卡死在 running，可以立即重新发起传输', async () => {
+    const client = new FakeDeviceClient()
+    client.simulateAdbNotFound()
+    const engine = new TransferEngine(client)
+
+    await expect(engine.run(['/sdcard/DCIM/a.jpg'], '/Users/test/Desktop')).rejects.toThrow()
+    expect(engine.snapshot().status).toBe('completed')
+
+    client.setDevices([{ serial: 'SER1', authorized: true }])
+    await engine.run(['/sdcard/DCIM/a.jpg'], '/Users/test/Desktop')
+
+    expect(engine.snapshot()).toMatchObject({ status: 'completed', completedFiles: 1 })
+  })
+
+  it('续传判定过程中 isConnected() 本身也抛错时，按断线处理而不是让状态卡死或误判为永久失败', async () => {
+    const client = new FakeDeviceClient()
+    client.setDevices([{ serial: 'SER1', authorized: true }])
+    client.holdPush('/sdcard/DCIM/a.jpg')
+    const engine = new TransferEngine(client)
+
+    const run = engine.run(['/sdcard/DCIM/a.jpg', '/sdcard/DCIM/b.jpg'], '/Users/test/Desktop')
+    await vi.waitFor(() => expect(client.pushCallLog()).toHaveLength(1))
+
+    // 先让挂起的 pushFile 失败，紧接着（同一时刻）让后续用来判定"是否断线"
+    // 的 isConnected() 查询本身也抛错——覆盖 isOwnerDisconnected() 自身失败
+    // 的分支，而不只是它返回 true/false 的正常路径。
+    client.simulateDisconnect('SER1')
+    client.simulateAdbNotFound()
+    await run
+
+    expect(engine.snapshot().status).toBe('interrupted')
+    expect(client.pushCallLog()).toHaveLength(1)
+  })
 })
