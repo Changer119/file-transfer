@@ -1,12 +1,21 @@
 import type { FileEntry } from '@shared/fileEntry'
 
-export function FileListView({ entries }: { entries: FileEntry[] }): React.JSX.Element {
+export function FileListView({
+  entries,
+  selectedPaths,
+  onToggle
+}: {
+  entries: FileEntry[]
+  selectedPaths: Set<string>
+  onToggle: (path: string) => void
+}): React.JSX.Element {
   if (entries.length === 0) return <p>这个目录是空的，或者手机上没有这个目录。</p>
 
   return (
     <table>
       <thead>
         <tr>
+          <th></th>
           <th>名称</th>
           <th>类型</th>
           <th>大小</th>
@@ -15,6 +24,16 @@ export function FileListView({ entries }: { entries: FileEntry[] }): React.JSX.E
       <tbody>
         {entries.map((entry) => (
           <tr key={entry.path}>
+            <td>
+              {!entry.isDirectory && (
+                <input
+                  type="checkbox"
+                  checked={selectedPaths.has(entry.path)}
+                  onChange={() => onToggle(entry.path)}
+                  aria-label={`选择 ${entry.name}`}
+                />
+              )}
+            </td>
             <td>{entry.name}</td>
             <td>{fileType(entry)}</td>
             <td>{formatSize(entry.sizeBytes)}</td>

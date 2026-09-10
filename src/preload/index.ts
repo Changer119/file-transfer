@@ -10,7 +10,12 @@ const api = {
     ipcRenderer.on(IPC_CHANNELS.deviceStatusChanged, listener)
     return () => ipcRenderer.removeListener(IPC_CHANNELS.deviceStatusChanged, listener)
   },
-  listDirectory: (path: string): Promise<FileEntry[]> => ipcRenderer.invoke(IPC_CHANNELS.listDirectory, path)
+  listDirectory: (path: string): Promise<FileEntry[]> => ipcRenderer.invoke(IPC_CHANNELS.listDirectory, path),
+  toggleSelection: (path: string): Promise<string[]> => ipcRenderer.invoke(IPC_CHANNELS.toggleSelection, path),
+  selectAllInFolder: (folderPaths: string[]): Promise<string[]> =>
+    ipcRenderer.invoke(IPC_CHANNELS.selectAllInFolder, folderPaths),
+  invertSelectionInFolder: (folderPaths: string[]): Promise<string[]> =>
+    ipcRenderer.invoke(IPC_CHANNELS.invertSelectionInFolder, folderPaths)
 }
 
 contextBridge.exposeInMainWorld('api', api)
