@@ -17,11 +17,24 @@ interface FileState {
  * time, never concurrently, per issue #1's sequential-transfer decision.
  * Writing straight to `destinationDir/<filename>` is the Overwrite Policy:
  * a same-named file is replaced, never renamed or skipped.
+ *
+ * Resume (issue #7): a Transfer Task belongs to the Device it was started
+ * with (`ownerSerial`, captured from the client at run() time). If pushFile
+ * fails because that device has disconnected, the task pauses in the
+ * `interrupted` state instead of marking the file failed and moving on.
+ * Reconnecting the same serial (via onDeviceReconnected, wired from
+ * DeviceMonitor) resumes automatically: already-`done` files are skipped,
+ * the file that was mid-transfer is retried whole from scratch — per ADR
+ * 0002, there is no byte-offset resume. Resume state lives only in this
+ * instance's memory: a fresh TransferEngine (simulating an app restart)
+ * never resumes a previous instance's interrupted task.
  */
 export class TransferEngine {
   private files: FileState[] = []
   private currentIndex = -1
-  private status: 'running' | 'completed' = 'completed'
+  private status: 'running' | 'completed' | 'interrupted' = 'completed'
+  private destinationDir = ''
+  private ownerSerial: string | undefined
   private readonly listeners: SnapshotListener[] = []
 
   constructor(private readonly client: DeviceClient) {}
@@ -44,21 +57,53 @@ export class TransferEngine {
   }
 
   async run(sourcePaths: string[], destinationDir: string): Promise<void> {
-    if (this.status === 'running') {
+    if (this.status === 'running' || this.status === 'interrupted') {
       throw new Error('TransferEngine.run() called while a transfer is already in progress')
     }
 
+    // status 必须在第一个 await 之前同步置为 running，否则两次几乎同时
+    // 发起的 run() 调用会都跑过上面的守卫检查（经典的 check-then-act 竞态）。
+    this.status = 'running'
     this.files = sourcePaths.map((path) => ({ path, status: 'pending', bytesTransferred: 0, totalBytes: 0 }))
     this.currentIndex = -1
-    this.status = 'running'
+    this.destinationDir = destinationDir
     this.notify()
 
+    // 任务归属于创建它时连接的 Device（CONTEXT.md「传输任务」词条）：记录下
+    // serial，后续断线/续传判定都靠它，而不是靠猜测当前还连着哪台设备。
+    this.ownerSerial = await this.client.getSerialNumber()
+    await this.processQueue()
+  }
+
+  /**
+   * Wired from DeviceMonitor.onStatusChange: called whenever a device
+   * reconnects. Only resumes when it's the same serial that owns the
+   * currently interrupted task — a different device reconnecting, or no
+   * interrupted task, is a no-op (cross-device handling is issue #8).
+   */
+  onDeviceReconnected(serial: string): void {
+    if (this.status !== 'interrupted' || this.ownerSerial !== serial) return
+    this.status = 'running'
+    this.notify()
+    // 这里是事件回调触发的 fire-and-forget 续传，没有调用方在 await 它；
+    // 必须兜底 catch，否则 isConnected() 万一异常会变成未处理的 rejection。
+    this.processQueue().catch((error: unknown) => {
+      logger.warn({ error }, 'resuming an interrupted transfer task failed unexpectedly')
+    })
+  }
+
+  private async processQueue(): Promise<void> {
     for (const [index, file] of this.files.entries()) {
+      // done：已经成功续传跳过；failed：非断线导致的普通失败，重连也不重试。
+      if (file.status === 'done' || file.status === 'failed') continue
+
       this.currentIndex = index
       file.status = 'transferring'
+      file.bytesTransferred = 0
+      file.totalBytes = 0
       this.notify()
 
-      const destPath = join(destinationDir, basename(file.path))
+      const destPath = join(this.destinationDir, basename(file.path))
       try {
         await this.client.pushFile(file.path, destPath, (progress) => {
           file.bytesTransferred = progress.bytesTransferred
@@ -67,6 +112,16 @@ export class TransferEngine {
         })
         file.status = 'done'
       } catch (error) {
+        if (await this.isOwnerDisconnected()) {
+          // ADR 0002：续传不做字节级续传，被打断的文件回到 pending，
+          // 下次会整个从头重新调用 pushFile。
+          file.status = 'pending'
+          file.bytesTransferred = 0
+          file.totalBytes = 0
+          this.status = 'interrupted'
+          this.notify()
+          return
+        }
         file.status = 'failed'
         logger.warn({ path: file.path, error }, 'pushFile failed, skipping to the next file')
       }
@@ -75,6 +130,11 @@ export class TransferEngine {
 
     this.status = 'completed'
     this.notify()
+  }
+
+  private async isOwnerDisconnected(): Promise<boolean> {
+    if (this.ownerSerial === undefined) return false
+    return !(await this.client.isConnected(this.ownerSerial))
   }
 
   private notify(): void {

@@ -10,11 +10,11 @@ export function TransferPanel({ disabled }: { disabled: boolean }): React.JSX.El
     window.api.startTransfer().catch(() => undefined)
   }
 
-  const transferring = snapshot?.status === 'running'
+  const busy = snapshot?.status === 'running' || snapshot?.status === 'interrupted'
 
   return (
     <div>
-      <button type="button" onClick={handleTransfer} disabled={disabled || transferring}>
+      <button type="button" onClick={handleTransfer} disabled={disabled || busy}>
         一键传输
       </button>
       {snapshot && (
@@ -26,6 +26,7 @@ export function TransferPanel({ disabled }: { disabled: boolean }): React.JSX.El
             <progress value={snapshot.currentFile.bytesTransferred} max={snapshot.currentFile.totalBytes} />
           )}
           {snapshot.status === 'completed' && <p>传输完成</p>}
+          {snapshot.status === 'interrupted' && <p>设备已断开，等待重新连接后自动继续传输</p>}
         </div>
       )}
     </div>

@@ -37,6 +37,12 @@ app.whenReady().then(() => {
   const monitor = new DeviceMonitor(client)
   const engine = new TransferEngine(client)
 
+  // 断线自动续传（issue #7）：同一序列号的设备重新连接后，交给
+  // TransferEngine 自行判断是否有等待续传的任务，无需用户点击任何按钮。
+  monitor.onStatusChange((status) => {
+    if (status.kind === 'connected') engine.onDeviceReconnected(status.serial)
+  })
+
   let currentWindow = createWindow()
   const getCurrentWindow = (): BrowserWindow => currentWindow
 

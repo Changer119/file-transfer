@@ -1,5 +1,5 @@
 export interface TransferSnapshot {
-  status: 'running' | 'completed'
+  status: 'running' | 'completed' | 'interrupted'
   totalFiles: number
   completedFiles: number
   currentFile?: {

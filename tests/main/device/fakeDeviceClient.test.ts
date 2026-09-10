@@ -37,4 +37,17 @@ describe('FakeDeviceClient', () => {
 
     await expect(client.pushFile('/sdcard/DCIM/a.jpg', '/dest/a.jpg', () => undefined)).resolves.toBeUndefined()
   })
+
+  it('simulateDisconnect removes the device and rejects any pushFile currently held for it', async () => {
+    const client = new FakeDeviceClient()
+    client.setDevices([{ serial: 'ABC123', authorized: true }])
+    client.holdPush('/sdcard/DCIM/a.jpg')
+
+    const push = client.pushFile('/sdcard/DCIM/a.jpg', '/dest/a.jpg', () => undefined)
+    client.simulateDisconnect('ABC123')
+
+    await expect(push).rejects.toThrow()
+    await expect(client.isConnected('ABC123')).resolves.toBe(false)
+    await expect(client.listDevices()).resolves.toEqual([])
+  })
 })

@@ -7,6 +7,11 @@ export interface RecordedPush {
   destPath: string
 }
 
+interface PendingPush {
+  resolve: () => void
+  reject: (error: Error) => void
+}
+
 /**
  * In-memory test double for DeviceClient. Test code drives scenarios via
  * setDevices()/simulateAdbNotFound()/holdPush()/simulatePushFailure()
@@ -18,7 +23,7 @@ export class FakeDeviceClient implements DeviceClient {
   private directories = new Map<string, FileEntry[]>()
   private unreadableDirectories = new Set<string>()
   private pushCalls: RecordedPush[] = []
-  private pendingPushes = new Map<string, () => void>()
+  private pendingPushes = new Map<string, PendingPush>()
   private failingPushes = new Set<string>()
 
   setDevices(devices: DeviceInfo[]): void {
@@ -62,22 +67,38 @@ export class FakeDeviceClient implements DeviceClient {
 
   /** The next pushFile() for this source path won't resolve until releasePush() is called. */
   holdPush(sourcePath: string): void {
-    this.pendingPushes.set(sourcePath, () => undefined)
+    this.pendingPushes.set(sourcePath, { resolve: () => undefined, reject: () => undefined })
   }
 
   releasePush(sourcePath: string): void {
-    this.pendingPushes.get(sourcePath)?.()
+    this.pendingPushes.get(sourcePath)?.resolve()
   }
 
   simulatePushFailure(sourcePath: string): void {
     this.failingPushes.add(sourcePath)
   }
 
+  /**
+   * Simulates a USB disconnect for the given serial: the device drops out of
+   * listDevices()/isConnected(), and any pushFile() currently held (via
+   * holdPush) for it rejects instead of resolving — mirroring how a real
+   * adb push errors out once the device disappears mid-transfer.
+   */
+  simulateDisconnect(serial: string): void {
+    this.devices = this.devices.filter((device) => device.serial !== serial)
+    for (const pending of this.pendingPushes.values()) {
+      pending.reject(new Error(`simulated device disconnect: ${serial}`))
+    }
+    this.pendingPushes.clear()
+  }
+
   async pushFile(sourcePath: string, destPath: string, onProgress: ProgressCallback): Promise<void> {
     this.pushCalls.push({ sourcePath, destPath })
     onProgress({ bytesTransferred: 0, totalBytes: 1 })
     if (this.pendingPushes.has(sourcePath)) {
-      await new Promise<void>((resolve) => this.pendingPushes.set(sourcePath, resolve))
+      await new Promise<void>((resolve, reject) => {
+        this.pendingPushes.set(sourcePath, { resolve, reject })
+      })
       this.pendingPushes.delete(sourcePath)
     }
     if (this.failingPushes.has(sourcePath)) throw new Error(`simulated push failure: ${sourcePath}`)
