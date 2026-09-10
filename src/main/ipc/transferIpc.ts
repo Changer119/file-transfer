@@ -9,7 +9,8 @@ export function registerTransferIpc(
   selection: SelectionState
 ): void {
   engine.onSnapshotChange((snapshot) => {
-    getWindow().webContents.send(IPC_CHANNELS.transferSnapshotChanged, snapshot)
+    const window = getWindow()
+    if (!window.isDestroyed()) window.webContents.send(IPC_CHANNELS.transferSnapshotChanged, snapshot)
   })
 
   ipcMain.handle(IPC_CHANNELS.startTransfer, async () => {

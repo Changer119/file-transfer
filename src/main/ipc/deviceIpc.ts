@@ -8,7 +8,8 @@ export function registerDeviceIpc(getWindow: () => BrowserWindow, monitor: Devic
   ipcMain.handle(IPC_CHANNELS.getDeviceStatus, () => monitor.refresh())
 
   monitor.onStatusChange((status) => {
-    getWindow().webContents.send(IPC_CHANNELS.deviceStatusChanged, status)
+    const window = getWindow()
+    if (!window.isDestroyed()) window.webContents.send(IPC_CHANNELS.deviceStatusChanged, status)
   })
 
   const pollTimer = setInterval(() => {
