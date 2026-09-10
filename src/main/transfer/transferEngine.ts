@@ -125,6 +125,7 @@ export class TransferEngine {
           this.notify()
         })
         file.status = 'done'
+        await this.deleteSourceFile(file.path)
       } catch (error) {
         // isOwnerDisconnected() 本身查询 isConnected() 也可能意外抛错（比如
         // adb 进程正在重启）；这种不确定情况按"断线"处理更安全——顶多多等一次
@@ -152,6 +153,20 @@ export class TransferEngine {
   private async isOwnerDisconnected(): Promise<boolean> {
     if (this.ownerSerial === undefined) return false
     return !(await this.client.isConnected(this.ownerSerial))
+  }
+
+  /**
+   * Post-Transfer Deletion (CONTEXT.md): once a file has landed on the Mac,
+   * its source on the device is removed right away — the transfer behaves
+   * like a move, not a copy. A failed deletion doesn't undo the already
+   * successful push; it's only logged, and the task keeps going.
+   */
+  private async deleteSourceFile(path: string): Promise<void> {
+    try {
+      await this.client.deleteFile(path)
+    } catch (error) {
+      logger.warn({ path, error }, 'deleteFile failed after a successful pushFile; source file remains on the device')
+    }
   }
 
   private notify(): void {

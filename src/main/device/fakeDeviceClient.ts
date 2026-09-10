@@ -25,6 +25,8 @@ export class FakeDeviceClient implements DeviceClient {
   private pushCalls: RecordedPush[] = []
   private pendingPushes = new Map<string, PendingPush>()
   private failingPushes = new Set<string>()
+  private deleteCalls: string[] = []
+  private failingDeletes = new Set<string>()
 
   setDevices(devices: DeviceInfo[]): void {
     this.devices = devices
@@ -78,6 +80,14 @@ export class FakeDeviceClient implements DeviceClient {
     this.failingPushes.add(sourcePath)
   }
 
+  deleteCallLog(): string[] {
+    return [...this.deleteCalls]
+  }
+
+  simulateDeleteFailure(path: string): void {
+    this.failingDeletes.add(path)
+  }
+
   /**
    * Simulates a USB disconnect for the given serial: the device drops out of
    * listDevices()/isConnected(), and any pushFile() currently held (via
@@ -106,6 +116,8 @@ export class FakeDeviceClient implements DeviceClient {
   }
 
   async deleteFile(path: string): Promise<void> {
+    this.deleteCalls.push(path)
+    if (this.failingDeletes.has(path)) throw new Error(`simulated delete failure: ${path}`)
     for (const [dirPath, entries] of this.directories) {
       this.directories.set(dirPath, entries.filter((entry) => entry.path !== path))
     }
