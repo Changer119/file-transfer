@@ -4,5 +4,7 @@ export const IPC_CHANNELS = {
   listDirectory: 'device:list-directory',
   toggleSelection: 'selection:toggle',
   selectAllInFolder: 'selection:select-all',
-  invertSelectionInFolder: 'selection:invert'
+  invertSelectionInFolder: 'selection:invert',
+  startTransfer: 'transfer:start',
+  transferSnapshotChanged: 'transfer:snapshot-changed'
 } as const

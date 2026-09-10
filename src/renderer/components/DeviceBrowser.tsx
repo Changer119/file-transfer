@@ -3,6 +3,7 @@ import type { BrowsableLocation } from '@shared/browsableLocations'
 import type { FileEntry } from '@shared/fileEntry'
 import { BrowsableLocationList } from './BrowsableLocationList'
 import { FileListView } from './FileListView'
+import { TransferPanel } from './TransferPanel'
 
 export function DeviceBrowser(): React.JSX.Element {
   const [selected, setSelected] = useState<BrowsableLocation>()
@@ -40,6 +41,7 @@ export function DeviceBrowser(): React.JSX.Element {
     <div>
       <BrowsableLocationList selectedPath={selected?.path} onSelect={handleSelect} />
       <p>已选择 {selectedPaths.size} 个文件</p>
+      <TransferPanel disabled={selectedPaths.size === 0} />
       {selected && (
         <>
           <button type="button" onClick={handleSelectAll}>

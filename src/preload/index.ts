@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer } from 'electron'
 import type { ConnectionStatus } from '@shared/deviceTypes'
 import type { FileEntry } from '@shared/fileEntry'
 import { IPC_CHANNELS } from '@shared/ipcChannels'
+import type { TransferSnapshot } from '@shared/transferTypes'
 
 const api = {
   getDeviceStatus: (): Promise<ConnectionStatus> => ipcRenderer.invoke(IPC_CHANNELS.getDeviceStatus),
@@ -15,7 +16,13 @@ const api = {
   selectAllInFolder: (folderPaths: string[]): Promise<string[]> =>
     ipcRenderer.invoke(IPC_CHANNELS.selectAllInFolder, folderPaths),
   invertSelectionInFolder: (folderPaths: string[]): Promise<string[]> =>
-    ipcRenderer.invoke(IPC_CHANNELS.invertSelectionInFolder, folderPaths)
+    ipcRenderer.invoke(IPC_CHANNELS.invertSelectionInFolder, folderPaths),
+  startTransfer: (): Promise<void> => ipcRenderer.invoke(IPC_CHANNELS.startTransfer),
+  onTransferSnapshotChange: (callback: (snapshot: TransferSnapshot) => void): (() => void) => {
+    const listener = (_event: unknown, snapshot: TransferSnapshot) => callback(snapshot)
+    ipcRenderer.on(IPC_CHANNELS.transferSnapshotChanged, listener)
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.transferSnapshotChanged, listener)
+  }
 }
 
 contextBridge.exposeInMainWorld('api', api)

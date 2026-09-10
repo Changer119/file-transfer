@@ -6,7 +6,9 @@ import { DeviceMonitor } from './device/deviceMonitor'
 import { registerDeviceIpc } from './ipc/deviceIpc'
 import { registerDirectoryIpc } from './ipc/directoryIpc'
 import { registerSelectionIpc } from './ipc/selectionIpc'
+import { registerTransferIpc } from './ipc/transferIpc'
 import { SelectionState } from './transfer/selectionState'
+import { TransferEngine } from './transfer/transferEngine'
 
 function createWindow(): void {
   const window = new BrowserWindow({
@@ -18,9 +20,11 @@ function createWindow(): void {
   })
 
   const client = new AdbDeviceClient()
+  const selection = new SelectionState()
   registerDeviceIpc(window, new DeviceMonitor(client))
   registerDirectoryIpc(client)
-  registerSelectionIpc(new SelectionState())
+  registerSelectionIpc(selection)
+  registerTransferIpc(window, new TransferEngine(client), selection)
 
   if (process.env.ELECTRON_RENDERER_URL) {
     window.loadURL(process.env.ELECTRON_RENDERER_URL)

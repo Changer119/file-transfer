@@ -26,4 +26,15 @@ describe('FakeDeviceClient', () => {
     await expect(client.isConnected('ABC123')).resolves.toBe(true)
     await expect(client.isConnected('OTHER')).resolves.toBe(false)
   })
+
+  it('holdPush only blocks the next pushFile() call for that path, not a later one after release', async () => {
+    const client = new FakeDeviceClient()
+    client.holdPush('/sdcard/DCIM/a.jpg')
+
+    const firstPush = client.pushFile('/sdcard/DCIM/a.jpg', '/dest/a.jpg', () => undefined)
+    client.releasePush('/sdcard/DCIM/a.jpg')
+    await firstPush
+
+    await expect(client.pushFile('/sdcard/DCIM/a.jpg', '/dest/a.jpg', () => undefined)).resolves.toBeUndefined()
+  })
 })
