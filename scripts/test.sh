@@ -2,4 +2,4 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 pnpm install
-pnpm run test
+pnpm run test "$@"

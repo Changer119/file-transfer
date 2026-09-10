@@ -10,7 +10,7 @@ import { registerTransferIpc } from './ipc/transferIpc'
 import { SelectionState } from './transfer/selectionState'
 import { TransferEngine } from './transfer/transferEngine'
 
-function createWindow(): void {
+function createWindow(): BrowserWindow {
   const window = new BrowserWindow({
     width: 1000,
     height: 700,
@@ -19,26 +19,35 @@ function createWindow(): void {
     }
   })
 
-  const client = new AdbDeviceClient()
-  const selection = new SelectionState()
-  registerDeviceIpc(window, new DeviceMonitor(client))
-  registerDirectoryIpc(client)
-  registerSelectionIpc(selection)
-  registerTransferIpc(window, new TransferEngine(client), selection)
-
   if (process.env.ELECTRON_RENDERER_URL) {
     window.loadURL(process.env.ELECTRON_RENDERER_URL)
   } else {
-    window.loadFile(join(import.meta.dirname,'../renderer/index.html'))
+    window.loadFile(join(import.meta.dirname, '../renderer/index.html'))
   }
+
+  return window
 }
 
 app.whenReady().then(() => {
   logger.info('app ready')
-  createWindow()
+
+  // 进程级单例：设备连接、选择状态等跟随 App 生命周期，而不是某个具体窗口。
+  const client = new AdbDeviceClient()
+  const selection = new SelectionState()
+  const monitor = new DeviceMonitor(client)
+  const engine = new TransferEngine(client)
+
+  let currentWindow = createWindow()
+  const getCurrentWindow = (): BrowserWindow => currentWindow
+
+  // ipcMain.handle 只在这里注册一次；重复注册同一个 channel 会直接抛错。
+  registerDeviceIpc(getCurrentWindow, monitor)
+  registerDirectoryIpc(client)
+  registerSelectionIpc(selection)
+  registerTransferIpc(getCurrentWindow, engine, selection)
 
   app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow()
+    if (BrowserWindow.getAllWindows().length === 0) currentWindow = createWindow()
   })
 })
 
