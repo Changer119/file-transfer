@@ -10,6 +10,7 @@ export class FakeDeviceClient implements DeviceClient {
   private devices: DeviceInfo[] = []
   private adbMissing = false
   private directories = new Map<string, FileEntry[]>()
+  private unreadableDirectories = new Set<string>()
 
   setDevices(devices: DeviceInfo[]): void {
     this.devices = devices
@@ -22,6 +23,10 @@ export class FakeDeviceClient implements DeviceClient {
 
   setDirectory(path: string, entries: FileEntry[]): void {
     this.directories.set(path, entries)
+  }
+
+  simulateDirectoryNotFound(path: string): void {
+    this.unreadableDirectories.add(path)
   }
 
   async listDevices(): Promise<DeviceInfo[]> {
@@ -38,6 +43,7 @@ export class FakeDeviceClient implements DeviceClient {
   }
 
   async listDirectory(path: string): Promise<FileEntry[]> {
+    if (this.unreadableDirectories.has(path)) throw new Error(`directory not found: ${path}`)
     return this.directories.get(path) ?? []
   }
 

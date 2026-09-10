@@ -4,6 +4,7 @@ import { logger } from './logger'
 import { AdbDeviceClient } from './device/adbDeviceClient'
 import { DeviceMonitor } from './device/deviceMonitor'
 import { registerDeviceIpc } from './ipc/deviceIpc'
+import { registerDirectoryIpc } from './ipc/directoryIpc'
 
 function createWindow(): void {
   const window = new BrowserWindow({
@@ -14,8 +15,9 @@ function createWindow(): void {
     }
   })
 
-  const monitor = new DeviceMonitor(new AdbDeviceClient())
-  registerDeviceIpc(window, monitor)
+  const client = new AdbDeviceClient()
+  registerDeviceIpc(window, new DeviceMonitor(client))
+  registerDirectoryIpc(client)
 
   if (process.env.ELECTRON_RENDERER_URL) {
     window.loadURL(process.env.ELECTRON_RENDERER_URL)
