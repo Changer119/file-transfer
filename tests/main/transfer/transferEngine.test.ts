@@ -76,51 +76,18 @@ describe('TransferEngine', () => {
     expect(engine.snapshot()).toMatchObject({ status: 'completed', totalFiles: 2, completedFiles: 1 })
   })
 
-  it('deletes the source file from the device immediately after each successful push, not after the whole task finishes', async () => {
-    const client = new FakeDeviceClient()
-    client.holdPush('/sdcard/DCIM/b.jpg')
-    const engine = new TransferEngine(client)
-
-    const run = engine.run(['/sdcard/DCIM/a.jpg', '/sdcard/DCIM/b.jpg'], '/Users/test/Desktop')
-
-    await vi.waitFor(() => {
-      expect(client.pushCallLog().map((call) => call.sourcePath)).toEqual([
-        '/sdcard/DCIM/a.jpg',
-        '/sdcard/DCIM/b.jpg'
-      ])
-    })
-    // b.jpg's push is still held, so if a.jpg's source is already deleted here,
-    // deletion happened per-file rather than being batched until run() resolves.
-    expect(client.deleteCallLog()).toEqual(['/sdcard/DCIM/a.jpg'])
-
-    client.releasePush('/sdcard/DCIM/b.jpg')
-    await run
-
-    expect(client.deleteCallLog()).toEqual(['/sdcard/DCIM/a.jpg', '/sdcard/DCIM/b.jpg'])
-  })
-
-  it('does not delete the source file on the device when pushFile fails', async () => {
+  it('never deletes the source file on the device, whether the push succeeds or fails (issue #11: 关闭传输后自动删除)', async () => {
     const client = new FakeDeviceClient()
     client.simulatePushFailure('/sdcard/DCIM/broken.jpg')
     const engine = new TransferEngine(client)
 
     await engine.run(['/sdcard/DCIM/broken.jpg', '/sdcard/DCIM/ok.jpg'], '/Users/test/Desktop')
 
-    expect(client.deleteCallLog()).toEqual(['/sdcard/DCIM/ok.jpg'])
-  })
-
-  it('keeps a successfully pushed file marked done and keeps transferring the rest of the task even if deleteFile fails', async () => {
-    const client = new FakeDeviceClient()
-    client.simulateDeleteFailure('/sdcard/DCIM/a.jpg')
-    const engine = new TransferEngine(client)
-
-    await engine.run(['/sdcard/DCIM/a.jpg', '/sdcard/DCIM/b.jpg'], '/Users/test/Desktop')
-
     expect(client.pushCallLog().map((call) => call.sourcePath)).toEqual([
-      '/sdcard/DCIM/a.jpg',
-      '/sdcard/DCIM/b.jpg'
+      '/sdcard/DCIM/broken.jpg',
+      '/sdcard/DCIM/ok.jpg'
     ])
-    expect(engine.snapshot()).toMatchObject({ status: 'completed', totalFiles: 2, completedFiles: 2 })
+    expect(client.deleteCallLog()).toEqual([])
   })
 
   it('rejects a second run() call while a transfer is still in progress, instead of corrupting the in-flight one', async () => {
