@@ -33,4 +33,23 @@ describe('listBrowsableDirectory', () => {
 
     expect(entries).toEqual([])
   })
+
+  it('filters out dotfiles, such as Android MediaStore .pending-* leftovers, from the listing', async () => {
+    const client = new FakeDeviceClient()
+    client.setDirectory('/sdcard/DCIM/Camera', [
+      { name: 'photo.jpg', path: '/sdcard/DCIM/Camera/photo.jpg', isDirectory: false, sizeBytes: 2048 },
+      {
+        name: '.pending-1671338824208-VID_20221211_124704.mp4',
+        path: '/sdcard/DCIM/Camera/.pending-1671338824208-VID_20221211_124704.mp4',
+        isDirectory: false,
+        sizeBytes: 0
+      }
+    ])
+
+    const entries = await listBrowsableDirectory(client, '/sdcard/DCIM/Camera')
+
+    expect(entries).toEqual([
+      { name: 'photo.jpg', path: '/sdcard/DCIM/Camera/photo.jpg', isDirectory: false, sizeBytes: 2048 }
+    ])
+  })
 })
