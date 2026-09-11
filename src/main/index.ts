@@ -6,6 +6,7 @@ import { DeviceMonitor } from './device/deviceMonitor'
 import { registerDeviceIpc } from './ipc/deviceIpc'
 import { registerDirectoryIpc } from './ipc/directoryIpc'
 import { registerSelectionIpc } from './ipc/selectionIpc'
+import { registerThumbnailIpc } from './ipc/thumbnailIpc'
 import { registerTransferIpc } from './ipc/transferIpc'
 import { SelectionState } from './transfer/selectionState'
 import { TransferEngine } from './transfer/transferEngine'
@@ -49,6 +50,7 @@ app.whenReady().then(() => {
   // ipcMain.handle 只在这里注册一次；重复注册同一个 channel 会直接抛错。
   registerDeviceIpc(getCurrentWindow, monitor, engine)
   registerDirectoryIpc(client)
+  registerThumbnailIpc(client)
   registerSelectionIpc(selection)
   registerTransferIpc(getCurrentWindow, engine, selection)
 

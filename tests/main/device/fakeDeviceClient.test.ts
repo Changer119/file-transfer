@@ -50,4 +50,27 @@ describe('FakeDeviceClient', () => {
     await expect(client.isConnected('ABC123')).resolves.toBe(false)
     await expect(client.listDevices()).resolves.toEqual([])
   })
+
+  it('readFileBytes returns the bytes previously registered via setFileContent for that path', async () => {
+    const client = new FakeDeviceClient()
+    client.setFileContent('/sdcard/DCIM/Camera/photo.jpg', Buffer.from('fake-jpeg-bytes'))
+
+    await expect(client.readFileBytes('/sdcard/DCIM/Camera/photo.jpg')).resolves.toEqual(
+      Buffer.from('fake-jpeg-bytes')
+    )
+  })
+
+  it('readFileBytes rejects for a path with no registered content', async () => {
+    const client = new FakeDeviceClient()
+
+    await expect(client.readFileBytes('/sdcard/DCIM/Camera/missing.jpg')).rejects.toThrow()
+  })
+
+  it('simulateReadFailure makes readFileBytes reject even for a path with registered content', async () => {
+    const client = new FakeDeviceClient()
+    client.setFileContent('/sdcard/DCIM/Camera/photo.jpg', Buffer.from('fake-jpeg-bytes'))
+    client.simulateReadFailure('/sdcard/DCIM/Camera/photo.jpg')
+
+    await expect(client.readFileBytes('/sdcard/DCIM/Camera/photo.jpg')).rejects.toThrow()
+  })
 })

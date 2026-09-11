@@ -1,4 +1,5 @@
 import type { FileEntry } from '@shared/fileEntry'
+import { FileThumbnail } from './FileThumbnail'
 
 export function FileListView({
   entries,
@@ -15,6 +16,7 @@ export function FileListView({
     <table>
       <thead>
         <tr>
+          <th></th>
           <th></th>
           <th>名称</th>
           <th>类型</th>
@@ -34,6 +36,7 @@ export function FileListView({
                 />
               )}
             </td>
+            <td>{!entry.isDirectory && <FileThumbnail name={entry.name} path={entry.path} />}</td>
             <td>{entry.name}</td>
             <td>{fileType(entry)}</td>
             <td>{formatSize(entry.sizeBytes)}</td>

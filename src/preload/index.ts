@@ -13,6 +13,7 @@ const api = {
   },
   discardInterruptedTask: (): Promise<void> => ipcRenderer.invoke(IPC_CHANNELS.discardInterruptedTask),
   listDirectory: (path: string): Promise<FileEntry[]> => ipcRenderer.invoke(IPC_CHANNELS.listDirectory, path),
+  getThumbnail: (path: string): Promise<string | undefined> => ipcRenderer.invoke(IPC_CHANNELS.getThumbnail, path),
   toggleSelection: (path: string): Promise<string[]> => ipcRenderer.invoke(IPC_CHANNELS.toggleSelection, path),
   selectAllInFolder: (folderPaths: string[]): Promise<string[]> =>
     ipcRenderer.invoke(IPC_CHANNELS.selectAllInFolder, folderPaths),

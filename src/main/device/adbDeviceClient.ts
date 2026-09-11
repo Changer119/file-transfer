@@ -2,7 +2,7 @@ import { stat } from 'node:fs/promises'
 import type { DeviceInfo } from '@shared/deviceTypes'
 import type { FileEntry, ProgressCallback } from '@shared/fileEntry'
 import { findAuthorizedSerial, isSerialAuthorized, type DeviceClient } from './deviceClient'
-import { runAdb } from './adbCommand'
+import { runAdb, runAdbBinary } from './adbCommand'
 
 const PROGRESS_POLL_INTERVAL_MS = 250
 
@@ -58,6 +58,10 @@ export class AdbDeviceClient implements DeviceClient {
 
   async deleteFile(path: string): Promise<void> {
     await runAdb(['shell', `rm "${path}"`])
+  }
+
+  async readFileBytes(path: string): Promise<Buffer> {
+    return runAdbBinary(['exec-out', `cat "${path}"`])
   }
 
   private async getFileSize(path: string): Promise<number> {

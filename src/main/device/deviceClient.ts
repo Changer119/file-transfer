@@ -15,6 +15,8 @@ export interface DeviceClient {
   listDirectory(path: string): Promise<FileEntry[]>
   pushFile(sourcePath: string, destPath: string, onProgress: ProgressCallback): Promise<void>
   deleteFile(path: string): Promise<void>
+  /** 缩略图（issue #10）：把整个文件读成内存里的字节，不落盘到本地路径。 */
+  readFileBytes(path: string): Promise<Buffer>
 }
 
 /** Shared by every DeviceClient implementation's getSerialNumber(). */

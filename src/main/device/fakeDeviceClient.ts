@@ -26,7 +26,10 @@ export class FakeDeviceClient implements DeviceClient {
   private pendingPushes = new Map<string, PendingPush>()
   private failingPushes = new Set<string>()
   private deleteCalls: string[] = []
-  private failingDeletes = new Set<string>()
+  private fileContents = new Map<string, Buffer>()
+  private failingReads = new Set<string>()
+  private readCalls: string[] = []
+  private pendingReads = new Map<string, () => void>()
 
   setDevices(devices: DeviceInfo[]): void {
     this.devices = devices
@@ -84,10 +87,6 @@ export class FakeDeviceClient implements DeviceClient {
     return [...this.deleteCalls]
   }
 
-  simulateDeleteFailure(path: string): void {
-    this.failingDeletes.add(path)
-  }
-
   /**
    * Simulates a USB disconnect for the given serial: the device drops out of
    * listDevices()/isConnected(), and any pushFile() currently held (via
@@ -117,9 +116,42 @@ export class FakeDeviceClient implements DeviceClient {
 
   async deleteFile(path: string): Promise<void> {
     this.deleteCalls.push(path)
-    if (this.failingDeletes.has(path)) throw new Error(`simulated delete failure: ${path}`)
     for (const [dirPath, entries] of this.directories) {
       this.directories.set(dirPath, entries.filter((entry) => entry.path !== path))
     }
+  }
+
+  /** 缩略图测试用：预先注册某个路径读出来应该是什么字节。 */
+  setFileContent(path: string, content: Buffer): void {
+    this.fileContents.set(path, content)
+  }
+
+  simulateReadFailure(path: string): void {
+    this.failingReads.add(path)
+  }
+
+  readFileBytesCallLog(): string[] {
+    return [...this.readCalls]
+  }
+
+  /** The next readFileBytes() for this path won't resolve until releaseRead() is called. */
+  holdRead(path: string): void {
+    this.pendingReads.set(path, () => undefined)
+  }
+
+  releaseRead(path: string): void {
+    this.pendingReads.get(path)?.()
+  }
+
+  async readFileBytes(path: string): Promise<Buffer> {
+    this.readCalls.push(path)
+    if (this.pendingReads.has(path)) {
+      await new Promise<void>((resolve) => this.pendingReads.set(path, resolve))
+      this.pendingReads.delete(path)
+    }
+    if (this.failingReads.has(path)) throw new Error(`simulated read failure: ${path}`)
+    const content = this.fileContents.get(path)
+    if (content === undefined) throw new Error(`no fake content registered for: ${path}`)
+    return content
   }
 }
