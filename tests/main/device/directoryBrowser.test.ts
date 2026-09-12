@@ -6,13 +6,13 @@ describe('listBrowsableDirectory', () => {
   it('returns the entries reported by the Device Client for that path', async () => {
     const client = new FakeDeviceClient()
     client.setDirectory('/sdcard/DCIM', [
-      { name: 'photo.jpg', path: '/sdcard/DCIM/photo.jpg', isDirectory: false, sizeBytes: 2048 }
+      { name: 'photo.jpg', path: '/sdcard/DCIM/photo.jpg', isDirectory: false, sizeBytes: 2048, modifiedAtMs: 1000 }
     ])
 
     const entries = await listBrowsableDirectory(client, '/sdcard/DCIM')
 
     expect(entries).toEqual([
-      { name: 'photo.jpg', path: '/sdcard/DCIM/photo.jpg', isDirectory: false, sizeBytes: 2048 }
+      { name: 'photo.jpg', path: '/sdcard/DCIM/photo.jpg', isDirectory: false, sizeBytes: 2048, modifiedAtMs: 1000 }
     ])
   })
 
@@ -37,19 +37,32 @@ describe('listBrowsableDirectory', () => {
   it('filters out dotfiles, such as Android MediaStore .pending-* leftovers, from the listing', async () => {
     const client = new FakeDeviceClient()
     client.setDirectory('/sdcard/DCIM/Camera', [
-      { name: 'photo.jpg', path: '/sdcard/DCIM/Camera/photo.jpg', isDirectory: false, sizeBytes: 2048 },
+      {
+        name: 'photo.jpg',
+        path: '/sdcard/DCIM/Camera/photo.jpg',
+        isDirectory: false,
+        sizeBytes: 2048,
+        modifiedAtMs: 1000
+      },
       {
         name: '.pending-1671338824208-VID_20221211_124704.mp4',
         path: '/sdcard/DCIM/Camera/.pending-1671338824208-VID_20221211_124704.mp4',
         isDirectory: false,
-        sizeBytes: 0
+        sizeBytes: 0,
+        modifiedAtMs: 2000
       }
     ])
 
     const entries = await listBrowsableDirectory(client, '/sdcard/DCIM/Camera')
 
     expect(entries).toEqual([
-      { name: 'photo.jpg', path: '/sdcard/DCIM/Camera/photo.jpg', isDirectory: false, sizeBytes: 2048 }
+      {
+        name: 'photo.jpg',
+        path: '/sdcard/DCIM/Camera/photo.jpg',
+        isDirectory: false,
+        sizeBytes: 2048,
+        modifiedAtMs: 1000
+      }
     ])
   })
 })

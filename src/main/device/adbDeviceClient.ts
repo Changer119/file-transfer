@@ -79,6 +79,18 @@ function parseLsLine(line: string, dirPath: string): FileEntry | undefined {
     name,
     path: `${dirPath.replace(/\/$/, '')}/${name}`,
     isDirectory: line.startsWith('d'),
-    sizeBytes: Number.parseInt(parts[4] ?? '0', 10) || 0
+    sizeBytes: Number.parseInt(parts[4] ?? '0', 10) || 0,
+    modifiedAtMs: parseModifiedAt(parts[5], parts[6])
   }
+}
+
+/**
+ * `ls -la` 的日期时间列是 `YYYY-MM-DD HH:MM`，按运行本工具的这台 Mac 的
+ * 本地时区解释——个人工具场景下手机和电脑通常同一个时区，不做跨时区换算。
+ * 解析失败（格式异常）时退化成 0，不让整行数据因为时间戳解析失败而消失。
+ */
+function parseModifiedAt(date: string | undefined, time: string | undefined): number {
+  if (!date || !time) return 0
+  const parsed = new Date(`${date}T${time}:00`).getTime()
+  return Number.isNaN(parsed) ? 0 : parsed
 }

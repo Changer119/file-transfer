@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { classifyFileKind } from '@shared/fileKind'
 
+// FileListView 的 ROW_HEIGHT / GRID_TEMPLATE_COLUMNS 要跟着这个尺寸一起改。
+export const THUMBNAIL_SIZE = 96
+
 /**
  * 缩略图（issue #10）：一个目录可能有几千个文件，逐行都立刻去请求缩略图会
  * 把 adb/ffmpeg 打满。用 IntersectionObserver 懒加载——只有这一行真的滚动
@@ -48,8 +51,14 @@ export function FileThumbnail({ name, path }: { name: string; path: string }): R
   if (kind === 'other') return null
 
   return (
-    <div ref={containerRef} style={{ width: 48, height: 48 }}>
-      {src && <img src={src} alt="" style={{ width: 48, height: 48, objectFit: 'cover' }} />}
+    <div ref={containerRef} style={{ width: THUMBNAIL_SIZE, height: THUMBNAIL_SIZE }}>
+      {src && (
+        <img
+          src={src}
+          alt=""
+          style={{ width: THUMBNAIL_SIZE, height: THUMBNAIL_SIZE, objectFit: 'cover' }}
+        />
+      )}
       {!src && failed && <span>{kind === 'video' ? '🎬' : '🖼️'}</span>}
     </div>
   )
