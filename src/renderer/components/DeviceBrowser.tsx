@@ -9,6 +9,9 @@ import { TransferPanel } from './TransferPanel'
 type SortKey = 'default' | 'size' | 'time'
 type SortDirection = 'asc' | 'desc'
 
+const secondaryButtonClasses =
+  'rounded-md bg-white px-3 py-1.5 text-sm font-medium text-gray-700 ring-1 ring-inset ring-gray-300 hover:bg-gray-50'
+
 export function DeviceBrowser(): React.JSX.Element {
   const [selected, setSelected] = useState<BrowsableLocation>()
   const [entries, setEntries] = useState<FileEntry[]>([])
@@ -60,37 +63,51 @@ export function DeviceBrowser(): React.JSX.Element {
   }
 
   return (
-    <div>
+    <div className="space-y-6">
       <BrowsableLocationList selectedPath={selected?.path} onSelect={handleSelect} />
-      <p>已选择 {selectedPaths.size} 个文件</p>
+
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-gray-600">
+          已选择 <span className="font-semibold text-gray-900">{selectedPaths.size}</span> 个文件
+        </p>
+      </div>
+
       <TransferPanel disabled={selectedPaths.size === 0} />
+
       {selected && (
-        <>
-          <button type="button" onClick={handleSelectAll}>
-            全选
-          </button>
-          <button type="button" onClick={handleInvertSelection}>
-            反选
-          </button>
-          <RangeSelectForm entries={sortedEntries} onSelectRange={handleSelectRange} />
-          <span>
-            排序：
-            <select value={sortKey} onChange={(event) => setSortKey(event.target.value as SortKey)}>
-              <option value="default">默认</option>
-              <option value="size">按大小</option>
-              <option value="time">按修改时间</option>
-            </select>
-            {sortKey !== 'default' && (
-              <button
-                type="button"
-                onClick={() => setSortDirection((direction) => (direction === 'asc' ? 'desc' : 'asc'))}
+        <div className="space-y-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <button type="button" onClick={handleSelectAll} className={secondaryButtonClasses}>
+              全选
+            </button>
+            <button type="button" onClick={handleInvertSelection} className={secondaryButtonClasses}>
+              反选
+            </button>
+            <RangeSelectForm entries={sortedEntries} onSelectRange={handleSelectRange} />
+            <div className="ml-auto flex items-center gap-2 text-sm text-gray-600">
+              <span>排序</span>
+              <select
+                value={sortKey}
+                onChange={(event) => setSortKey(event.target.value as SortKey)}
+                className="rounded-md border-0 py-1.5 pr-8 pl-2 text-sm text-gray-900 ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-blue-600"
               >
-                {sortDirection === 'asc' ? '↑ 升序' : '↓ 降序'}
-              </button>
-            )}
-          </span>
+                <option value="default">默认</option>
+                <option value="size">按大小</option>
+                <option value="time">按修改时间</option>
+              </select>
+              {sortKey !== 'default' && (
+                <button
+                  type="button"
+                  onClick={() => setSortDirection((direction) => (direction === 'asc' ? 'desc' : 'asc'))}
+                  className={secondaryButtonClasses}
+                >
+                  {sortDirection === 'asc' ? '↑ 升序' : '↓ 降序'}
+                </button>
+              )}
+            </div>
+          </div>
           <FileListView entries={sortedEntries} selectedPaths={selectedPaths} onToggle={handleToggle} />
-        </>
+        </div>
       )}
     </div>
   )

@@ -51,12 +51,17 @@ export function FileThumbnail({ name, path }: { name: string; path: string }): R
   if (kind === 'other') return null
 
   return (
-    <div ref={containerRef} style={{ width: THUMBNAIL_SIZE, height: THUMBNAIL_SIZE }}>
+    <div
+      ref={containerRef}
+      className="flex items-center justify-center overflow-hidden rounded-lg bg-gray-100 text-lg"
+      style={{ width: THUMBNAIL_SIZE, height: THUMBNAIL_SIZE }}
+    >
       {src && (
         <img
           src={src}
           alt=""
-          style={{ width: THUMBNAIL_SIZE, height: THUMBNAIL_SIZE, objectFit: 'cover' }}
+          className="h-full w-full object-cover"
+          style={{ width: THUMBNAIL_SIZE, height: THUMBNAIL_SIZE }}
         />
       )}
       {!src && failed && <span>{kind === 'video' ? '🎬' : '🖼️'}</span>}

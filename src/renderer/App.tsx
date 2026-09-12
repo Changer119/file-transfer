@@ -12,10 +12,18 @@ export function App(): React.JSX.Element {
   }, [])
 
   return (
-    <main>
-      <h1>File Transfer</h1>
-      <DeviceStatusView status={status} onDiscardInterruptedTask={() => window.api.discardInterruptedTask()} />
-      {status.kind === 'connected' && <DeviceBrowser />}
+    <main className="min-h-screen bg-gray-50 font-sans text-gray-900 antialiased">
+      <div className="mx-auto max-w-5xl px-6 py-10">
+        <h1 className="text-2xl font-semibold tracking-tight">File Transfer</h1>
+        <div className="mt-6">
+          <DeviceStatusView status={status} onDiscardInterruptedTask={() => window.api.discardInterruptedTask()} />
+        </div>
+        {status.kind === 'connected' && (
+          <div className="mt-6">
+            <DeviceBrowser />
+          </div>
+        )}
+      </div>
     </main>
   )
 }

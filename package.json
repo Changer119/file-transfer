@@ -18,12 +18,14 @@
     "react-dom": "19.2.8"
   },
   "devDependencies": {
+    "@tailwindcss/vite": "^4.3.3",
     "@types/node": "26.5.0",
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.7",
     "@vitejs/plugin-react": "4.7.0",
     "electron": "44.3.0",
     "electron-vite": "5.0.0",
+    "tailwindcss": "^4.3.3",
     "typescript": "7.0.2",
     "vite": "7.3.6",
     "vitest": "5.0.0"

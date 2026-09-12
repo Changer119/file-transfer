@@ -30,11 +30,20 @@ export function FileListView({
     overscan: 10
   })
 
-  if (entries.length === 0) return <p>这个目录是空的，或者手机上没有这个目录。</p>
+  if (entries.length === 0) {
+    return (
+      <p className="rounded-xl border border-dashed border-gray-300 bg-white py-10 text-center text-sm text-gray-400">
+        这个目录是空的，或者手机上没有这个目录。
+      </p>
+    )
+  }
 
   return (
-    <div>
-      <div style={{ display: 'grid', gridTemplateColumns: GRID_TEMPLATE_COLUMNS, fontWeight: 'bold' }}>
+    <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
+      <div
+        className="border-b border-gray-200 px-3 py-2 text-xs font-medium tracking-wide text-gray-500 uppercase"
+        style={{ display: 'grid', gridTemplateColumns: GRID_TEMPLATE_COLUMNS }}
+      >
         <span>#</span>
         <span></span>
         <span></span>
@@ -48,9 +57,11 @@ export function FileListView({
           {virtualizer.getVirtualItems().map((virtualRow) => {
             const entry = entries[virtualRow.index]
             if (!entry) return null
+            const selected = selectedPaths.has(entry.path)
             return (
               <div
                 key={entry.path}
+                className={`border-b border-gray-100 px-3 text-sm ${selected ? 'bg-blue-50' : 'hover:bg-gray-50'}`}
                 style={{
                   position: 'absolute',
                   top: 0,
@@ -63,22 +74,25 @@ export function FileListView({
                   alignItems: 'center'
                 }}
               >
-                <span>{virtualRow.index + 1}</span>
+                <span className="text-gray-400">{virtualRow.index + 1}</span>
                 <span>
                   {!entry.isDirectory && (
                     <input
                       type="checkbox"
-                      checked={selectedPaths.has(entry.path)}
+                      checked={selected}
                       onChange={() => onToggle(entry.path)}
                       aria-label={`选择 ${entry.name}`}
+                      className="h-4 w-4 cursor-pointer rounded accent-blue-600"
                     />
                   )}
                 </span>
                 <span>{!entry.isDirectory && <FileThumbnail name={entry.name} path={entry.path} />}</span>
-                <span>{entry.name}</span>
-                <span>{fileType(entry)}</span>
-                <span>{formatSize(entry.sizeBytes)}</span>
-                <span>{formatModifiedAt(entry.modifiedAtMs)}</span>
+                <span className="truncate font-medium text-gray-900" title={entry.name}>
+                  {entry.name}
+                </span>
+                <span className="text-gray-500">{fileType(entry)}</span>
+                <span className="text-gray-500">{formatSize(entry.sizeBytes)}</span>
+                <span className="text-gray-500">{formatModifiedAt(entry.modifiedAtMs)}</span>
               </div>
             )
           })}
