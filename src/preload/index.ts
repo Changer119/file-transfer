@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import type { ConnectionStatus } from '@shared/deviceTypes'
+import type { DeleteFilesResult } from '@shared/fileDeletion'
 import type { FileEntry } from '@shared/fileEntry'
 import { IPC_CHANNELS } from '@shared/ipcChannels'
 import type { TransferSnapshot } from '@shared/transferTypes'
@@ -14,6 +15,7 @@ const api = {
   discardInterruptedTask: (): Promise<void> => ipcRenderer.invoke(IPC_CHANNELS.discardInterruptedTask),
   listDirectory: (path: string): Promise<FileEntry[]> => ipcRenderer.invoke(IPC_CHANNELS.listDirectory, path),
   getThumbnail: (path: string): Promise<string | undefined> => ipcRenderer.invoke(IPC_CHANNELS.getThumbnail, path),
+  deleteFiles: (paths: string[]): Promise<DeleteFilesResult> => ipcRenderer.invoke(IPC_CHANNELS.deleteFiles, paths),
   toggleSelection: (path: string): Promise<string[]> => ipcRenderer.invoke(IPC_CHANNELS.toggleSelection, path),
   selectAllInFolder: (folderPaths: string[]): Promise<string[]> =>
     ipcRenderer.invoke(IPC_CHANNELS.selectAllInFolder, folderPaths),

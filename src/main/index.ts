@@ -5,6 +5,7 @@ import { AdbDeviceClient } from './device/adbDeviceClient'
 import { DeviceMonitor } from './device/deviceMonitor'
 import { registerDeviceIpc } from './ipc/deviceIpc'
 import { registerDirectoryIpc } from './ipc/directoryIpc'
+import { registerFileDeletionIpc } from './ipc/fileDeletionIpc'
 import { registerSelectionIpc } from './ipc/selectionIpc'
 import { registerThumbnailIpc } from './ipc/thumbnailIpc'
 import { registerTransferIpc } from './ipc/transferIpc'
@@ -51,6 +52,7 @@ app.whenReady().then(() => {
   registerDeviceIpc(getCurrentWindow, monitor, engine)
   registerDirectoryIpc(client)
   registerThumbnailIpc(client)
+  registerFileDeletionIpc(client, selection)
   registerSelectionIpc(selection)
   registerTransferIpc(getCurrentWindow, engine, selection)
 

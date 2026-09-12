@@ -34,6 +34,16 @@ describe('SelectionState', () => {
     expect(state.selectedPaths().sort()).toEqual(['/sdcard/DCIM/b.jpg', '/sdcard/Download/x.jpg'])
   })
 
+  it('removePaths clears only the given paths from the selection, leaving everything else untouched', () => {
+    const state = new SelectionState()
+    state.selectAllInFolder(['/sdcard/DCIM/a.jpg', '/sdcard/DCIM/b.jpg'])
+    state.toggle('/sdcard/Download/c.pdf')
+
+    state.removePaths(['/sdcard/DCIM/a.jpg', '/sdcard/NotSelected/x.jpg'])
+
+    expect(state.selectedPaths().sort()).toEqual(['/sdcard/DCIM/b.jpg', '/sdcard/Download/c.pdf'])
+  })
+
   it('keeps a folder\'s selection after navigating away and back to it', () => {
     const state = new SelectionState()
 

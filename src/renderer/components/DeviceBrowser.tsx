@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react'
 import type { BrowsableLocation } from '@shared/browsableLocations'
+import type { DeleteFilesResult } from '@shared/fileDeletion'
 import type { FileEntry } from '@shared/fileEntry'
 import { BrowsableLocationList } from './BrowsableLocationList'
 import { FileListView } from './FileListView'
-import { RangeSelectForm } from './RangeSelectForm'
+import { RangeActionsForm } from './RangeActionsForm'
 import { TransferPanel } from './TransferPanel'
 
 type SortKey = 'default' | 'size' | 'time'
@@ -62,6 +63,17 @@ export function DeviceBrowser(): React.JSX.Element {
     applySelection(window.api.selectAllInFolder(paths))
   }
 
+  function handleFilesDeleted(result: DeleteFilesResult): void {
+    const succeeded = new Set(result.succeeded)
+    if (succeeded.size > 0) {
+      setEntries((current) => current.filter((entry) => !succeeded.has(entry.path)))
+    }
+    setSelectedPaths(new Set(result.selectedPaths))
+    if (result.failed.length > 0) {
+      window.alert(`有 ${result.failed.length} 个文件删除失败，请稍后重试。`)
+    }
+  }
+
   return (
     <div className="space-y-6">
       <BrowsableLocationList selectedPath={selected?.path} onSelect={handleSelect} />
@@ -83,7 +95,11 @@ export function DeviceBrowser(): React.JSX.Element {
             <button type="button" onClick={handleInvertSelection} className={secondaryButtonClasses}>
               反选
             </button>
-            <RangeSelectForm entries={sortedEntries} onSelectRange={handleSelectRange} />
+            <RangeActionsForm
+              entries={sortedEntries}
+              onSelectRange={handleSelectRange}
+              onFilesDeleted={handleFilesDeleted}
+            />
             <div className="ml-auto flex items-center gap-2 text-sm text-gray-600">
               <span>排序</span>
               <select

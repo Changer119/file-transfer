@@ -19,6 +19,11 @@ export class SelectionState {
     for (const path of folderPaths) this.toggle(path)
   }
 
+  /** 批量删除手机文件后调用：把已经不存在的路径从选择集合里清掉，避免后续传输对着幽灵路径操作。 */
+  removePaths(paths: string[]): void {
+    for (const path of paths) this.selected.delete(path)
+  }
+
   isSelected(path: string): boolean {
     return this.selected.has(path)
   }

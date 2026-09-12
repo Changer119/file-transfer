@@ -4,6 +4,7 @@ export const IPC_CHANNELS = {
   discardInterruptedTask: 'device:discard-interrupted-task',
   listDirectory: 'device:list-directory',
   getThumbnail: 'device:get-thumbnail',
+  deleteFiles: 'device:delete-files',
   toggleSelection: 'selection:toggle',
   selectAllInFolder: 'selection:select-all',
   invertSelectionInFolder: 'selection:invert',
