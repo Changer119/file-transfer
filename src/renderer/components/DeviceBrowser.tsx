@@ -19,6 +19,7 @@ export function DeviceBrowser(): React.JSX.Element {
   const [selectedPaths, setSelectedPaths] = useState<Set<string>>(new Set())
   const [sortKey, setSortKey] = useState<SortKey>('default')
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
+  const [deletingSelected, setDeletingSelected] = useState(false)
 
   // 排序只影响展示顺序，不影响 SelectionState 本身；但 RangeSelectForm 的
   // "#" 序号必须和 FileListView 实际渲染的顺序完全一致，所以两者都要传
@@ -63,6 +64,22 @@ export function DeviceBrowser(): React.JSX.Element {
     applySelection(window.api.selectAllInFolder(paths))
   }
 
+  // 按序号删除（RangeActionsForm）和这个"删除已选择"是两个独立的删除入口，
+  // 都复用同一个 deleteFiles IPC——区别只是路径列表的来源不同（序号区间
+  // 算出来的 vs 当前累积选中的 selectedPaths）。
+  function handleDeleteSelected(): void {
+    const paths = [...selectedPaths]
+    if (paths.length === 0) return
+    const confirmed = window.confirm(`删除已选择的 ${paths.length} 个文件？此操作不可恢复。`)
+    if (!confirmed) return
+
+    setDeletingSelected(true)
+    window.api
+      .deleteFiles(paths)
+      .then(handleFilesDeleted)
+      .finally(() => setDeletingSelected(false))
+  }
+
   function handleFilesDeleted(result: DeleteFilesResult): void {
     const succeeded = new Set(result.succeeded)
     if (succeeded.size > 0) {
@@ -84,7 +101,17 @@ export function DeviceBrowser(): React.JSX.Element {
         </p>
       </div>
 
-      <TransferPanel disabled={selectedPaths.size === 0} />
+      <div className="flex items-start gap-3">
+        <TransferPanel disabled={selectedPaths.size === 0} />
+        <button
+          type="button"
+          onClick={handleDeleteSelected}
+          disabled={selectedPaths.size === 0 || deletingSelected}
+          className="rounded-lg bg-white px-4 py-2 text-sm font-medium text-red-600 shadow-sm ring-1 ring-inset ring-red-200 hover:bg-red-50 disabled:cursor-not-allowed disabled:text-red-300 disabled:ring-red-100"
+        >
+          {deletingSelected ? '删除中…' : '删除已选择'}
+        </button>
+      </div>
 
       {selected && (
         <div className="space-y-3">
