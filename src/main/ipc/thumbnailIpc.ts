@@ -13,12 +13,15 @@ const IMAGE_MIME_TYPES: Record<string, string> = {
 }
 
 export function registerThumbnailIpc(client: DeviceClient): void {
-  ipcMain.handle(IPC_CHANNELS.getThumbnail, async (_event, path: string): Promise<string | undefined> => {
-    const kind = classifyFileKind(path)
-    const bytes = await generateThumbnail(client, path)
-    if (!bytes) return undefined
-    return `data:${resolveMimeType(path, kind)};base64,${bytes.toString('base64')}`
-  })
+  ipcMain.handle(
+    IPC_CHANNELS.getThumbnail,
+    async (_event, path: string, sizeBytes: number): Promise<string | undefined> => {
+      const kind = classifyFileKind(path)
+      const bytes = await generateThumbnail(client, path, sizeBytes)
+      if (!bytes) return undefined
+      return `data:${resolveMimeType(path, kind)};base64,${bytes.toString('base64')}`
+    }
+  )
 }
 
 function resolveMimeType(path: string, kind: ReturnType<typeof classifyFileKind>): string {

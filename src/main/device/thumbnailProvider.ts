@@ -7,15 +7,32 @@ import type { DeviceClient } from './deviceClient'
 import { logger } from '../logger'
 
 /**
+ * 视频缩略图的大小上限（issue #13 真机验证）：手机录的视频，MP4 的 moov
+ * 索引大多在文件末尾（边录边写，只有录完才知道完整索引），adb 走的是
+ * USB 顺序传输通道，不像本地磁盘那样能直接跳到文件末尾读一小段索引——
+ * 想拿到一帧画面就得先把整个文件传完。实测一个 600MB 的视频要等 40 秒，
+ * 而 100MB 上下大约 6~7 秒，作为个人工具能接受的等待上限。超过这个大小
+ * 的视频直接放弃生成真实缩略图，UI 用通用视频图标顶上。
+ */
+export const MAX_VIDEO_THUMBNAIL_SOURCE_BYTES = 100 * 1024 * 1024
+
+/**
  * 缩略图（issue #10）：图片直接把原图字节透传给渲染进程，由浏览器端 CSS
  * 缩放显示；视频用 ffmpeg 抽一帧当缩略图。任何失败（读取失败、ffmpeg 缺失
  * 或抽帧失败）都吞掉返回 undefined——缩略图只是锦上添花，不该让文件列表
  * 因为某一个文件读取失败而整体报错。
  */
-export async function generateThumbnail(client: DeviceClient, path: string): Promise<Buffer | undefined> {
+export async function generateThumbnail(
+  client: DeviceClient,
+  path: string,
+  sizeBytes: number
+): Promise<Buffer | undefined> {
   const kind = classifyFileKind(path)
   if (kind === 'other') return undefined
-  if (kind === 'video') return runQueuedVideoThumbnail(client, path)
+  if (kind === 'video') {
+    if (sizeBytes > MAX_VIDEO_THUMBNAIL_SOURCE_BYTES) return undefined
+    return runQueuedVideoThumbnail(client, path)
+  }
 
   try {
     return await client.readFileBytes(path)
@@ -70,7 +87,14 @@ async function extractVideoFrame(path: string, videoBytes: Buffer): Promise<Buff
 function runFfmpeg(args: string[]): Promise<void> {
   return new Promise((resolvePromise, reject) => {
     const child = spawn('ffmpeg', args)
+    let stderr = ''
+    child.stderr.on('data', (chunk: Buffer) => {
+      stderr += chunk.toString('utf8')
+    })
     child.on('error', reject)
-    child.on('close', (code) => (code === 0 ? resolvePromise() : reject(new Error(`ffmpeg exited with code ${code}`))))
+    child.on('close', (code) => {
+      if (code === 0) resolvePromise()
+      else reject(new Error(`ffmpeg exited with code ${code}: ${stderr}`))
+    })
   })
 }

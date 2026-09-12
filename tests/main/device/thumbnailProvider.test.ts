@@ -1,13 +1,13 @@
 import { describe, expect, it, vi } from 'vitest'
 import { FakeDeviceClient } from '@main/device/fakeDeviceClient'
-import { generateThumbnail } from '@main/device/thumbnailProvider'
+import { generateThumbnail, MAX_VIDEO_THUMBNAIL_SOURCE_BYTES } from '@main/device/thumbnailProvider'
 
 describe('generateThumbnail', () => {
   it('returns the raw bytes as-is for an image file, with no processing', async () => {
     const client = new FakeDeviceClient()
     client.setFileContent('/sdcard/DCIM/Camera/photo.jpg', Buffer.from('fake-jpeg-bytes'))
 
-    await expect(generateThumbnail(client, '/sdcard/DCIM/Camera/photo.jpg')).resolves.toEqual(
+    await expect(generateThumbnail(client, '/sdcard/DCIM/Camera/photo.jpg', 2048)).resolves.toEqual(
       Buffer.from('fake-jpeg-bytes')
     )
   })
@@ -15,7 +15,7 @@ describe('generateThumbnail', () => {
   it('does not call the Device Client at all for a file that is neither an image nor a video', async () => {
     const client = new FakeDeviceClient()
 
-    const thumbnail = await generateThumbnail(client, '/sdcard/Documents/notes.txt')
+    const thumbnail = await generateThumbnail(client, '/sdcard/Documents/notes.txt', 2048)
 
     expect(thumbnail).toBeUndefined()
     expect(client.readFileBytesCallLog()).toEqual([])
@@ -25,7 +25,32 @@ describe('generateThumbnail', () => {
     const client = new FakeDeviceClient()
     client.simulateReadFailure('/sdcard/DCIM/Camera/broken.jpg')
 
-    await expect(generateThumbnail(client, '/sdcard/DCIM/Camera/broken.jpg')).resolves.toBeUndefined()
+    await expect(generateThumbnail(client, '/sdcard/DCIM/Camera/broken.jpg', 2048)).resolves.toBeUndefined()
+  })
+
+  it('does not even attempt to read a video file whose size is over the threshold — adb over USB cannot skip to the trailing moov atom, so a real thumbnail would mean downloading the whole file', async () => {
+    const client = new FakeDeviceClient()
+    client.setFileContent('/sdcard/DCIM/Camera/huge.mp4', Buffer.from('fake-video-huge'))
+
+    const thumbnail = await generateThumbnail(
+      client,
+      '/sdcard/DCIM/Camera/huge.mp4',
+      MAX_VIDEO_THUMBNAIL_SOURCE_BYTES + 1
+    )
+
+    expect(thumbnail).toBeUndefined()
+    expect(client.readFileBytesCallLog()).toEqual([])
+  })
+
+  it('still generates a real thumbnail for a video right at the size threshold', async () => {
+    const client = new FakeDeviceClient()
+    client.setFileContent('/sdcard/DCIM/Camera/a.mp4', Buffer.from('fake-video-a'))
+
+    // 内容不是合法视频，ffmpeg 抽帧会失败，但这里只关心"有没有尝试读取"，
+    // 用 readFileBytesCallLog 证明没有被大小阈值提前拦下。
+    await generateThumbnail(client, '/sdcard/DCIM/Camera/a.mp4', MAX_VIDEO_THUMBNAIL_SOURCE_BYTES)
+
+    expect(client.readFileBytesCallLog()).toEqual(['/sdcard/DCIM/Camera/a.mp4'])
   })
 
   it('queues video thumbnail generation one at a time, so a second video request does not start downloading until the first one is done', async () => {
@@ -34,8 +59,8 @@ describe('generateThumbnail', () => {
     client.setFileContent('/sdcard/DCIM/Camera/b.mp4', Buffer.from('fake-video-b'))
     client.holdRead('/sdcard/DCIM/Camera/a.mp4')
 
-    const first = generateThumbnail(client, '/sdcard/DCIM/Camera/a.mp4')
-    const second = generateThumbnail(client, '/sdcard/DCIM/Camera/b.mp4')
+    const first = generateThumbnail(client, '/sdcard/DCIM/Camera/a.mp4', 2048)
+    const second = generateThumbnail(client, '/sdcard/DCIM/Camera/b.mp4', 2048)
 
     await vi.waitFor(() => expect(client.readFileBytesCallLog()).toEqual(['/sdcard/DCIM/Camera/a.mp4']))
     // a.mp4 的下载还卡着没释放，b.mp4 不应该已经开始下载——证明是排队而不是并发
@@ -54,8 +79,8 @@ describe('generateThumbnail', () => {
     client.setFileContent('/sdcard/DCIM/Camera/photo.jpg', Buffer.from('fake-jpeg-bytes'))
     client.holdRead('/sdcard/DCIM/Camera/a.mp4')
 
-    const video = generateThumbnail(client, '/sdcard/DCIM/Camera/a.mp4')
-    await expect(generateThumbnail(client, '/sdcard/DCIM/Camera/photo.jpg')).resolves.toEqual(
+    const video = generateThumbnail(client, '/sdcard/DCIM/Camera/a.mp4', 2048)
+    await expect(generateThumbnail(client, '/sdcard/DCIM/Camera/photo.jpg', 2048)).resolves.toEqual(
       Buffer.from('fake-jpeg-bytes')
     )
 

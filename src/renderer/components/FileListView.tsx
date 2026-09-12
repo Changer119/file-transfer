@@ -86,7 +86,11 @@ export function FileListView({
                     />
                   )}
                 </span>
-                <span>{!entry.isDirectory && <FileThumbnail name={entry.name} path={entry.path} />}</span>
+                <span>
+                  {!entry.isDirectory && (
+                    <FileThumbnail name={entry.name} path={entry.path} sizeBytes={entry.sizeBytes} />
+                  )}
+                </span>
                 <span className="truncate font-medium text-gray-900" title={entry.name}>
                   {entry.name}
                 </span>
