@@ -1,8 +1,12 @@
 import { mkdirSync } from 'node:fs'
 import { join } from 'node:path'
+import { app } from 'electron'
 import { destination, pino, stdSerializers } from 'pino'
 
-const logsDir = join(process.cwd(), 'logs')
+// 不能用 process.cwd() 拼日志目录：从 Launchpad/Finder 启动时 macOS 给的
+// cwd 是 "/"，会导致 mkdir '/logs' 报 ENOENT 而在启动阶段直接崩溃。
+// app.getPath('logs') 是 Electron 提供的、不依赖 cwd 的标准日志目录。
+const logsDir = app.isPackaged ? app.getPath('logs') : join(process.cwd(), 'logs')
 mkdirSync(logsDir, { recursive: true })
 
 export const logger = pino(
