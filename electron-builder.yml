@@ -1,0 +1,14 @@
+appId: com.jiangfachang.filetransfer
+productName: fc文件传输
+directories:
+  buildResources: build
+  output: dist
+files:
+  - out/**/*
+  - package.json
+mac:
+  icon: build/icon.icns
+  category: public.app-category.utilities
+  target:
+    - target: dir
+      arch: x64
