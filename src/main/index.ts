@@ -1,8 +1,10 @@
+import './env/resolvePackagedLogsDir'
 import { join } from 'node:path'
 import { app, BrowserWindow } from 'electron'
 import { logger } from './logger'
 import { AdbDeviceClient } from './device/adbDeviceClient'
 import { DeviceMonitor } from './device/deviceMonitor'
+import { ensureCommandPath } from './env/ensureCommandPath'
 import { registerDeviceIpc } from './ipc/deviceIpc'
 import { registerDirectoryIpc } from './ipc/directoryIpc'
 import { registerFileDeletionIpc } from './ipc/fileDeletionIpc'
@@ -11,6 +13,8 @@ import { registerThumbnailIpc } from './ipc/thumbnailIpc'
 import { registerTransferIpc } from './ipc/transferIpc'
 import { SelectionState } from './transfer/selectionState'
 import { TransferEngine } from './transfer/transferEngine'
+
+ensureCommandPath()
 
 function createWindow(): BrowserWindow {
   const window = new BrowserWindow({

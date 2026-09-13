@@ -1,12 +1,14 @@
 import { mkdirSync } from 'node:fs'
 import { join } from 'node:path'
-import { app } from 'electron'
 import { destination, pino, stdSerializers } from 'pino'
 
 // 不能用 process.cwd() 拼日志目录：从 Launchpad/Finder 启动时 macOS 给的
-// cwd 是 "/"，会导致 mkdir '/logs' 报 ENOENT 而在启动阶段直接崩溃。
-// app.getPath('logs') 是 Electron 提供的、不依赖 cwd 的标准日志目录。
-const logsDir = app.isPackaged ? app.getPath('logs') : join(process.cwd(), 'logs')
+// cwd 是 "/"，会导致 mkdir '/logs' 报 ENOENT 而在启动阶段直接崩溃。打包场景
+// 下 FILE_TRANSFER_LOGS_DIR 由 env/resolvePackagedLogsDir.ts 在 index.ts
+// 最早的 import 阶段写入（指向 app.getPath('logs')，不依赖 cwd）。这里刻意
+// 不直接 `import { app } from 'electron'`——那样会让每个引入 logger 的测试
+// 文件都得 mock electron，logger 只是想写个文件而已。
+const logsDir = process.env.FILE_TRANSFER_LOGS_DIR ?? join(process.cwd(), 'logs')
 mkdirSync(logsDir, { recursive: true })
 
 export const logger = pino(
